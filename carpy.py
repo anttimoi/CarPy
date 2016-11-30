@@ -1,35 +1,22 @@
-# variable size
-from sys import getsizeof
-import math
-
 # reading osm
 import xml.etree.ElementTree
 
 # plotting
 import matplotlib.pyplot as plt
-import numpy as np
 
 class Node:
-    x = 0;
-    y = 0;
-    id = 0;
-
     def __init__(self, x, y, id):
         self.x = float(x)
         self.y = float(y)
         self.id = id
+        self.neighbors = []
 
-    def normalize(self,bounds):
+    def normalize(self, bounds):
         self.x = 1/(bounds['maxX']-bounds['minX'])*(self.x-bounds['minX'])*100
         self.y = 1/(bounds['maxY']-bounds['minY'])*(self.y-bounds['minY'])*100
 
-class Edge:
-    begin = 0;
-    end = 0;
-
-    def __init__(self, begin, end):
-        self.begin = begin
-        self.end = end
+    def addNeighbor(self, id):
+        self.neighbors.append(id)
 
 def getBoundNodes(nodes):
     maxX = 0
@@ -52,20 +39,19 @@ def getBoundNodes(nodes):
 
     return {'maxX':maxX, 'minX':minX, 'maxY':maxY, 'minY': minY}
 
-def plotGraph(nodes,edges):
+def plotGraph(graph):
     x = []
     y = []
 
-    for key, node in nodes.items():
+    for key, node in graph.items():
         x.append(node.x)
         y.append(node.y)
 
     #plt.plot(x, y, '.')
-
-    for edge in edges:
-            node1 = nodes[edge.begin]
-            node2 = nodes[edge.end]
-            plt.plot([node1.x, node2.x],[node1.y, node2.y])
+    for key, node in graph.items():
+        for edge in node.neighbors:
+                node2 = graph[edge]
+                plt.plot([node.x, node2.x],[node.y, node2.y])
 
     plt.show()
 
@@ -86,43 +72,40 @@ def getWays(osm):
 
     return ways
 
+def countEdges(graph):
+    edges = 0
+    for key, node in graph.items():
+        edges += len(node.neighbors)
+    return edges
+
 def getGraph(fileName):
     nodes = {}
 
     osm = xml.etree.ElementTree.parse(fileName).getroot()
-
-    for atype in osm.findall('node'):
-        newNode = Node(atype.get('lon'),atype.get('lat'),atype.get('id'))
+    for node in osm.findall('node'):
+        newNode = Node(node.get('lon'),node.get('lat'),node.get('id'))
         nodes.update({newNode.id: newNode})
 
     ways = getWays(osm)
 
     cleanNodes = {}
-
     for way in ways:
         for node in way:
             if node in nodes.keys():
                 cleanNodes.update({node: nodes[node]})
-
-    edges = []
+    nodes = cleanNodes
 
     for way in ways:
         for n in range(len(way)-1):
             node1 = way[n]
             node2 = way[n+1]
-            edges.append(Edge(node1,node2))
+            nodes[node1].addNeighbor(node2)
 
-    nodes = cleanNodes
-
-    return [nodes, edges]
+    return nodes
 
 if __name__ == "__main__":
-    graph = getGraph('hervanta.osm')
-    graphSize = getsizeof(graph[0])
-    graphSize += sum(map(getsizeof, graph[0].values())) + sum(map(getsizeof, graph[0].keys()))
-    graphSize += getsizeof(graph[1])
-    print("Size: ",math.floor(graphSize/1000),"kB")
-    print("Nodes:",len(graph[0]))
-    print("Edges:",len(graph[1]))
-    #plotGraph(graph[0],graph[1])
+    graph = getGraph('lempaala.osm')
+    print("Nodes:",len(graph))
+    print("Edges:",countEdges(graph))
+    plotGraph(graph)
 

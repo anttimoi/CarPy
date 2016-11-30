@@ -47,11 +47,22 @@ def plotGraph(graph):
         x.append(node.x)
         y.append(node.y)
 
-    #plt.plot(x, y, '.')
+    drawnNodes = []
+    drawn = 0
+    skipped = 0
+
     for key, node in graph.items():
         for edge in node.neighbors:
                 node2 = graph[edge]
-                plt.plot([node.x, node2.x],[node.y, node2.y])
+                if not node2 in drawnNodes:
+                    plt.plot([node.x, node2.x],[node.y, node2.y])
+                    drawn += 1
+                else:
+                    skipped += 1
+
+        drawnNodes.append(node)
+
+    print("Edges skipped:",skipped,"drawn",drawn)
 
     plt.show()
 
@@ -100,6 +111,7 @@ def getGraph(fileName):
             node1 = way[n]
             node2 = way[n+1]
             nodes[node1].addNeighbor(node2)
+            nodes[node2].addNeighbor(node1)
 
     return nodes
 
@@ -107,5 +119,6 @@ if __name__ == "__main__":
     graph = getGraph('lempaala.osm')
     print("Nodes:",len(graph))
     print("Edges:",countEdges(graph))
+
     plotGraph(graph)
 
